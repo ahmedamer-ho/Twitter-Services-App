@@ -1,0 +1,313 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Server Infrastructure with Launch Template, Auto Scaling Group, and Application Load Balancer"
+
+Parameters:
+  SshCidrIp:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: IP range for SSH access
+  PredefinedMetricType:
+      Type: String
+      Default: ASGAverageCPUUtilization  # Updated default value to a valid one
+      Description: Choose the predefined metric for scaling (e.g., ASGAverageCPUUtilization, ALBRequestCountPerTarget)
+      AllowedValues:
+        - ASGAverageCPUUtilization
+        - ALBRequestCountPerTarget
+        - ASGAverageNetworkIn
+        - ASGAverageNetworkOut
+      # Parameter for Scaling Up Target Value
+  TargetValueUp:
+    Type: Number
+    Default: 50
+    Description: Target value for the chosen Scaling -UP- metric 
+
+  # Parameter for Scaling Down Target Value
+  TargetValueDown:
+    Type: Number
+    Default: 30
+    Description: Target value for the chosen Scaling -DOWN- metric 
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the Bastion host
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
+Resources:
+  # IAM Role for EC2 Instances
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+        - arn:aws:iam::aws:policy/EC2InstanceConnect
+
+  # IAM Instance Profile
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+  # Launch Template for EC2 Instances
+  TwitterLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: TwitterServiceTemplate
+      LaunchTemplateData:
+        InstanceType: t2.micro
+        ImageId: ami-0e2c8caa4b6378d8c  
+        KeyName: !Ref KeyName
+        NetworkInterfaces:
+              - AssociatePublicIpAddress: true
+                DeviceIndex: 0
+                Groups:
+                  - !Ref WebServerSecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 8
+              VolumeType: gp2
+              DeleteOnTermination: true
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        UserData: 
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -e  # Exit on error
+
+            # Update and install Docker
+            sudo apt update
+            sudo apt install -y docker.io
+
+            # Start and enable Docker
+            sudo systemctl start docker
+            sudo systemctl enable docker
+
+            # Allow traffic on port 80
+            sudo ufw allow 80/tcp
+            sudo ufw reload
+
+            # Pull and run the Docker image
+            sudo docker pull hooramer/hello-twitter
+            sudo docker run -d -p 80:8080 hooramer/hello-twitter
+
+            # Verify the container is running
+            sudo docker ps
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: TwitterServiceInstance
+  # Bastion Host Security Group
+  # BastionSecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupDescription: Security group for Bastion host
+  #     VpcId: !ImportValue "VpcId"
+  #     SecurityGroupIngress:
+  #       - IpProtocol: tcp
+  #         FromPort: 22
+  #         ToPort: 22
+  #         CidrIp: !Ref SshCidrIp
+  #     SecurityGroupEgress:
+  #       - IpProtocol: -1
+  #         FromPort: -1
+  #         ToPort: -1
+  #         CidrIp: 0.0.0.0/0
+  #     Tags:
+  #       - Key: Name
+  #         Value: BastionSecurityGroup
+
+  #Bastion Host EC2 Instance
+  # BastionHost:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     InstanceType: t2.micro
+  #     ImageId: ami-0014a768bde80541f  # Amazon Linux 2
+  #     KeyName: !Ref KeyName
+  #     SubnetId: 
+  #       Fn::Select: 
+  #         - 0
+  #         - Fn::Split:
+  #             - ","
+  #             - !ImportValue "PublicSubnets"
+  #     SecurityGroupIds: 
+  #       - !Ref BastionSecurityGroup
+  #     Tags:
+  #       - Key: Name
+  #         Value: BastionServer
+  # Auto Scaling Group
+  TwitterAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: TwitterServiceASG
+      LaunchTemplate:
+        LaunchTemplateId: !Ref TwitterLaunchTemplate
+        Version: !GetAtt TwitterLaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 2
+      DesiredCapacity: 1
+      VPCZoneIdentifier: 
+        Fn::Split:
+            - ","
+            - !ImportValue "PublicSubnets"
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+      Tags:
+        - Key: Name
+          Value: TwitterServiceInstance
+          PropagateAtLaunch: true
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 90
+      DefaultInstanceWarmup: 60  
+
+  ScalingPolicyUp:
+    Type: AWS::AutoScaling::ScalingPolicy
+    DependsOn:
+      - TwitterAutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Ref TwitterAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: !Ref PredefinedMetricType
+        TargetValue: !Ref TargetValueUp
+
+  ScalingPolicyDown:
+    Type: AWS::AutoScaling::ScalingPolicy
+    DependsOn:
+      - TwitterAutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Ref TwitterAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: !Ref PredefinedMetricType
+        TargetValue: !Ref TargetValueDown
+        
+# Security Group for Load Balancer
+  LBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP traffic to the Load Balancer
+      VpcId:  
+        Fn::ImportValue: "VpcId"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref SshCidrIp
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref SshCidrIp
+      Tags:
+        - Key: Name
+          Value: LBSecurityGroup
+
+  # Security Group for Web Servers
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP traffic from Load Balancer to Web Servers
+      VpcId: 
+        Fn::ImportValue: "VpcId"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LBSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshCidrIp
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref SshCidrIp
+      Tags:
+        - Key: Name
+          Value: WebServerSecurityGroup
+
+
+  # ALB Resource
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: MyApplicationALB
+      Scheme: internet-facing
+      Subnets: 
+        Fn::Split:
+          - ","
+          - !ImportValue "PublicSubnets"
+      SecurityGroups: 
+        - !Ref LBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Application-ALB
+
+  # Target Group for ALB
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: MyTargetGroup
+      VpcId: !ImportValue  "VpcId"
+      Protocol: HTTP
+      Port: 80
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      HealthCheckPort: 80
+      HealthCheckIntervalSeconds: 15
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Tags:
+        - Key: Name
+          Value: Application-TargetGroup
+
+  # Listener for ALB
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+# ALB Listener Rule
+  ALBListenerRule:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Properties:
+        ListenerArn: !Ref ALBListener
+        Conditions:
+          - Field: path-pattern
+            Values:
+              - /
+        Actions:
+          - Type: forward
+            TargetGroupArn: !Ref ALBTargetGroup
+        Priority: 1
+
+Outputs:
+  ALBDNSName:
+    Description: DNS Name of the Application Load Balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+
+  TwitterServiceASGName:
+    Description: Name of the Auto Scaling Group
+    Value: !Ref TwitterAutoScalingGroup
+
+  # BastionPublicIP:
+  #   Description: Public IP of Bastion Host
+  #   Value: !GetAtt BastionHost.PublicIp
