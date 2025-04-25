@@ -2,8 +2,16 @@ package auth
 
 import (
 	"context"
-	"errors"
+	//"errors"
+
 	"github.com/Nerzal/gocloak/v12"
+	//"github.com/labstack/gommon/email"
+	"fmt"
+
+	"bytes"
+	"encoding/json"
+	
+	"net/http"
 )
 
 // KeycloakClient wraps the gocloak client and configuration for our realm.
@@ -40,21 +48,12 @@ func (kc *KeycloakClient) AuthenticateUser(username, password string) (string, e
 }
 
 // RegisterUser creates a new user in Keycloak.
-// This method obtains an admin token using LoginAdmin and then creates a user.
-func (kc *KeycloakClient) RegisterUser(username,firstname,lastname, password, email string) error {
+// This method obtains an access token using LoginClient and then creates a user.
+func (kc *KeycloakClient) RegisterUser(username, email, firstname, lastname, password string) error {
 	ctx := context.Background()
-	// Obtain an admin token.
-	adminToken, err := kc.Client.LoginAdmin(ctx, kc.AdminUsername, kc.AdminPassword, kc.Realm)
-	//adminToken, err := kc.Client.LoginAdmin(ctx, kc.AdminUsername, kc.AdminPassword, "master")
-	if err != nil {
-		return err
-	}
+	fmt.Printf(kc.ClientID)
 
-	// Check if the access token is empty.
-	if adminToken.AccessToken == "" {
-		return errors.New("failed to obtain admin access token")
-	}
-
+	adminToken, err := kc.Client.LoginClient(ctx, kc.ClientID, kc.ClientSecret, kc.Realm)
 	// Create a new user using CredentialRepresentation.
 	user := gocloak.User{
 		Username:  &username,
@@ -70,8 +69,69 @@ func (kc *KeycloakClient) RegisterUser(username,firstname,lastname, password, em
 			},
 		},
 	}
+	token := adminToken.AccessToken
+	body, _ := json.Marshal(user)
 
-	// CreateUser expects the admin token as a string.
-	_, err = kc.Client.CreateUser(ctx, kc.Realm, adminToken.AccessToken, user)
+	req, _ := http.NewRequest("POST", "http://localhost:8080/admin/realms/realm1/users", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{}
+	_, err1 := client.Do(req)
+	if err1 != nil {
+		return err1
+	}
 	return err
+}
+
+// GetUsers retrieves all users from Keycloak
+func (kc *KeycloakClient) GetUsers() ([]*gocloak.User, error) {
+	ctx := context.Background()
+
+	// Get admin token using client credentials
+	token, err := kc.Client.LoginClient(
+		ctx,
+		kc.ClientID,
+		kc.ClientSecret,
+		kc.Realm,
+	)
+	//token, err := kc.Client.LoginAdmin(ctx, kc.AdminUsername, kc.AdminPassword, kc.Realm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to authenticate: %v", err)
+	}
+
+	// Get users with pagination parameters
+	params := gocloak.GetUsersParams{
+		First: gocloak.IntP(0),   // Offset
+		Max:   gocloak.IntP(100), // Limit
+	}
+
+	users, err := kc.Client.GetUsers(ctx, token.AccessToken, kc.Realm, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users: %v", err)
+	}
+
+	return users, nil
+}
+
+// GetUserByID retrieves a specific user by ID
+func (kc *KeycloakClient) GetUserByID(userID string) (*gocloak.User, error) {
+	ctx := context.Background()
+
+	token, err := kc.Client.LoginClient(
+		ctx,
+		kc.ClientID,
+		kc.ClientSecret,
+		kc.Realm,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to authenticate: %v", err)
+	}
+
+	user, err := kc.Client.GetUserByID(ctx, token.AccessToken, kc.Realm, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %v", err)
+	}
+
+	return user, nil
 }

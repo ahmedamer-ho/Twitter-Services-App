@@ -12,10 +12,10 @@ import (
 func main() {
 	keycloak := auth.NewKeycloakClient(
 		"http://localhost:8080",
-		"user-service-realm",
-		"user-service-client",
+		"realm1",
+		"go-app",
 		"FjFT8TCcYKMQRsXobqdcJQxWcL0qIMlA",
-		"amer.user", // Admin username amer.user
+		"admin", // Admin username amer.user
 		"admin", // Admin password admin
 	)
 
@@ -39,10 +39,10 @@ func main() {
 	r.POST("/register", func(c *gin.Context) {
 		var req struct {
 			Username  string `json:"username"`
+			Email     string `json:"email"`
 			FirstName string `json:"firstname"`
 			LastName  string `json:"lastname"`
 			Password  string `json:"password"`
-			Email     string `json:"email"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -50,13 +50,14 @@ func main() {
 			return
 		}
 
-		if err := keycloak.RegisterUser(req.Username,req.FirstName,req.LastName, req.Password, req.Email); err != nil {
+		if err := keycloak.RegisterUser(req.Username, req.Email, req.FirstName, req.LastName, req.Password); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		c.JSON(201, gin.H{"message": "User registered successfully"})
 	})
+
 	r.POST("/login", func(c *gin.Context) {
 		var req struct {
 			Username string `json:"username"`
@@ -76,6 +77,48 @@ func main() {
 
 		c.JSON(200, gin.H{"token": token})
 	})
+	// Add these new routes after your existing routes
+	r.GET("/users", func(c *gin.Context) {
+		users, err := keycloak.GetUsers()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 
+		// Convert gocloak users to simpler JSON structure
+		var result []map[string]interface{}
+		for _, user := range users {
+			result = append(result, map[string]interface{}{
+				"id":        user.ID,
+				"username":  user.Username,
+				"email":     user.Email,
+				"firstName": user.FirstName,
+				"lastName":  user.LastName,
+				"enabled":   user.Enabled,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{"users": result})
+	})
+
+	authenticated.GET("/users/:id", func(c *gin.Context) {
+		userID := c.Param("id")
+		user, err := keycloak.GetUserByID(userID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"user": map[string]interface{}{
+				"id":        user.ID,
+				"username":  user.Username,
+				"email":     user.Email,
+				"firstName": user.FirstName,
+				"lastName":  user.LastName,
+				"enabled":   user.Enabled,
+			},
+		})
+	})
 	r.Run(":8081")
 }
