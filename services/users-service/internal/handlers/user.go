@@ -1,26 +1,43 @@
 package handlers
 
 import (
+    "net/http"
+
+    "github.com/Twitter-Services-App/user-service/internal/core"
     "github.com/gin-gonic/gin"
-    "github.com/Twitter-Services-App/user-service/internal/db"
-    "gorm.io/gorm"
 )
 
 type UserHandler struct {
-    DB *gorm.DB
+    service core.AuthService
 }
 
-func (h *UserHandler) RegisterUser(c *gin.Context) {
-    var user db.User
-    if err := c.ShouldBindJSON(&user); err != nil {
-        c.JSON(400, gin.H{"error": "Invalid input"})
+func NewUserHandler(service core.AuthService) *UserHandler {
+    return &UserHandler{service: service}
+}
+
+
+func (h *UserHandler) RegisterRoutes(router *gin.RouterGroup) {
+    router.GET("/users", h.getUsers)
+    router.GET("/users/:id", h.getUserByID)
+}
+
+func (h *UserHandler) getUsers(c *gin.Context) {
+    users, err := h.service.GetUsers()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return
     }
 
-    if err := h.DB.Create(&user).Error; err != nil {
-        c.JSON(500, gin.H{"error": "Failed to create user"})
+    c.JSON(http.StatusOK, gin.H{"users": users})
+}
+
+func (h *UserHandler) getUserByID(c *gin.Context) {
+    userID := c.Param("id")
+    user, err := h.service.GetUserByID(userID)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
         return
     }
 
-    c.JSON(201, user)
+    c.JSON(http.StatusOK, gin.H{"user": user})
 }

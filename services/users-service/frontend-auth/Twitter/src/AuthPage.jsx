@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import Swal from 'sweetalert2';
 
-export default function AuthPage() {
+
+export default function AuthPage({ onLoginSuccess })  {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: "",
@@ -16,8 +17,8 @@ export default function AuthPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const url = isLogin
-      ? "http://localhost:8081/login"
-      : "http://localhost:8081/register";
+      ? "http://localhost:8081/auth/login"
+      : "http://localhost:8081/auth/register";
   
     try {
       const payload = isLogin
@@ -42,12 +43,22 @@ export default function AuthPage() {
       });
   
       if (isLogin) {
+        // Swal.fire({
+        //   title: 'Success!',
+        //   text: 'You have successfully logged in!'+res.data.token,
+        //   icon: 'success',
+        //   confirmButtonText: 'OK',
+        //   confirmButtonColor: '#3b82f6'
+        // });
+        localStorage.setItem("token", res.data.token); // Save token
         Swal.fire({
           title: 'Success!',
-          text: 'You have successfully logged in!'+res.data.token,
+          text: 'You have successfully logged in!',
           icon: 'success',
           confirmButtonText: 'OK',
           confirmButtonColor: '#3b82f6'
+        }).then(() => {
+          onLoginSuccess(); // Redirect to user list page
         });
       } else {
         Swal.fire({
@@ -80,7 +91,17 @@ export default function AuthPage() {
     }
   };
   
-
+  const handleLogout = () => {
+    // Clear the token from localStorage or sessionStorage
+    localStorage.removeItem('token');  // Assuming you stored it in localStorage
+  
+    // Optionally, you can clear sessionStorage too
+    sessionStorage.removeItem('token');
+  
+    // Redirect to login or homepage
+    window.location.href = '/'; // Redirect to the login page or home
+  };
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white shadow-xl rounded-2xl p-8 w-96">

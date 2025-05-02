@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${fileDirname}"
+            "program": "/mnt/34160EC8160E8B56/Eng Ayman Course/Projects/Twitter-Services-App/services/users-service/cmd/main.go"
         }
     ]
 }

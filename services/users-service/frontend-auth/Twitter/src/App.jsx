@@ -1,15 +1,26 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from "react";
+import AuthPage from "./AuthPage";
+import UsersPage from "./UsersPage";
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
-import AuthPage from './AuthPage'
-
 function App() {
-  const [count, setCount] = useState(0)
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsAuthenticated(!!token);
+  }, []);
 
   return (
-<AuthPage/>
-  )
+    <>
+      {isAuthenticated ? (
+        <UsersPage />
+      ) : (
+        <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />
+      )}
+    </>
+  );
 }
 
-export default App
+export default App;
