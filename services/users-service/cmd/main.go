@@ -7,17 +7,25 @@ import (
 	"github.com/Twitter-Services-App/user-service/internal/middlewares"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/Twitter-Services-App/user-service/internal/configs"
+	"log"
 )
 
 func main() {
-	// Initialize Keycloak client
+     // Load configuration
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatal("Cannot load config:", err)
+	}
+	//1. Initialize Keycloak client with config
 	keycloakClient := auth.NewKeycloakClient(
-		"http://localhost:8080",
-		"realm1",
-		"go-app",
-		"FjFT8TCcYKMQRsXobqdcJQxWcL0qIMlA",
-		"admin",
-		"admin",
+		cfg.Keycloak.URL,
+		cfg.Keycloak.Realm,
+		cfg.Keycloak.ClientID,
+		cfg.Keycloak.ClientSecret,
+		cfg.Keycloak.AdminUsername,
+		cfg.Keycloak.AdminPassword,
 	)
 
 	//// 2. Inject client into service
