@@ -135,3 +135,86 @@ func (kc *KeycloakClient) GetUserByID(userID string) (*gocloak.User, error) {
 
 	return user, nil
 }
+func (s *KeycloakService) GetClientID() string {
+    return s.client.ClientID
+}
+
+func (s *KeycloakService) GetClientSecret() string {
+    return s.client.ClientSecret
+}
+
+func (s *KeycloakService) GetRealm() string {
+    return s.client.Realm
+}
+
+func (s *KeycloakService) LogoutAllSessions(ctx context.Context, userID string) error {
+    // Get admin token
+    adminToken, err := s.client.Client.LoginClient(
+        ctx,
+        s.client.ClientID,
+        s.client.ClientSecret,
+        s.client.Realm,
+    )
+    if err != nil {
+        return fmt.Errorf("failed to get admin token: %w", err)
+    }
+
+    // Terminate all sessions
+    err = s.client.Client.LogoutAllSessions(
+        ctx,
+        adminToken.AccessToken,
+        s.client.Realm,
+        userID,
+    )
+    if err != nil {
+        return fmt.Errorf("failed to logout all sessions: %w", err)
+    }
+
+    return nil
+}
+
+func (s *KeycloakService) Logout(ctx context.Context, token string) error {
+    // First try standard logout
+    if err := s.client.Client.Logout(
+        ctx,
+        s.client.ClientID,
+        s.client.ClientSecret,
+        s.client.Realm,
+        token,
+    ); err == nil {
+        return nil
+    }
+
+    // If standard logout fails, get user ID and terminate all sessions
+    rpt, err := s.client.Client.RetrospectToken(
+        ctx,
+        token,
+        s.client.ClientID,
+        s.client.ClientSecret,
+        s.client.Realm,
+    )
+    if err != nil {
+        return fmt.Errorf("token introspection failed: %w", err)
+    }
+
+    if !*rpt.Active {
+        return nil // Token already invalid
+    }
+	// Get the user ID from token claims
+    _,claims, err := s.client.Client.DecodeAccessToken(
+        ctx,
+        token,
+        s.client.Realm,
+    )
+    if err != nil {
+        return fmt.Errorf("token decoding failed: %w", err)
+    }
+
+   // Extract subject (user ID) from claims
+   claimsMap := *claims
+   userID, ok := claimsMap["sub"].(string)
+   if !ok || userID == "" {
+	   return fmt.Errorf("invalid token claims: missing subject")
+   }
+    return s.LogoutAllSessions(ctx, userID)
+}

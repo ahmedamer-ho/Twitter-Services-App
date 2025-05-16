@@ -71,3 +71,4 @@ func safeBool(ptr *bool) bool {
     }
     return false
 }
+
