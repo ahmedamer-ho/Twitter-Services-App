@@ -2,13 +2,12 @@ package main
 
 import (
 	"github.com/Twitter-Services-App/user-service/internal/services"
-	"github.com/Twitter-Services-App/user-service/internal/core"
+	//"github.com/Twitter-Services-App/user-service/internal/core"
 	"github.com/Twitter-Services-App/user-service/internal/handlers"
 	"github.com/Twitter-Services-App/user-service/internal/middlewares"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
 	"github.com/Twitter-Services-App/user-service/internal/configs"
 	"log"
+	"net/http"
 )
 
 func main() {
@@ -34,39 +33,40 @@ func main() {
     // Low-level details (Keycloak implementation) defined separately
 
     // Composition root (main.go) wiring everything together
-	authService := auth.NewKeycloakService(keycloakClient).(core.AuthService)
+	authService := auth.NewKeycloakService(keycloakClient)
 
 	//// 3. Inject service into handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(authService)
 
 	// Setup router
-	router := gin.Default()
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}))
-	
+	// ServeMux as router
+	mux := http.NewServeMux()
 
-	// Register routes
-	authHandler.RegisterRoutes(router)
+	//Public routes with CORS
+	publicMux := http.NewServeMux()
+	authHandler.RegisterRoutes(publicMux)
+	mux.Handle("/", middlewares.CORS(publicMux))
 
-	//// 4. Inject client into middleware
-	protected := router.Group("/")
-	protected.Use(middlewares.KeycloakMiddleware(
+	// Protected routes using middleware
+	protectedMux := http.NewServeMux()
+		
+	userHandler.RegisterRoutes(protectedMux)
+
+
+	// protectedMux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Header().Set("Content-Type", "application/json")
+	// 	w.Write([]byte(`{"message": "This is a protected route"}`))
+	// })
+
+	// Middleware wraps protected routes
+	mux.Handle("/api/",middlewares.CORS( middlewares.KeycloakMiddleware(
 		keycloakClient.Client,
 		keycloakClient.Realm,
 		keycloakClient.ClientID,
-		keycloakClient.ClientSecret))
-	{
-		userHandler.RegisterRoutes(protected)
-		protected.GET("/protected", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "This is a protected route"})
-		})
-	}
-
-	router.Run(":8081")
+		keycloakClient.ClientSecret,
+	)(protectedMux)))
+	
+	log.Println("Server running on :8081")
+	http.ListenAndServe(":8081", mux)
 }

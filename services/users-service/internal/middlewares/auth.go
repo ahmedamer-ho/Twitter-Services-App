@@ -3,62 +3,63 @@ package middlewares
 import (
 	"net/http"
 	"strings"
-
+   "context"
 	"github.com/Nerzal/gocloak/v12"
-	"github.com/gin-gonic/gin"
+
 )
 
-func KeycloakMiddleware(client *gocloak.GoCloak, realm string, clientID string, clientSecret string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("Authorization")
-        if authHeader == "" {
-            authHeader = c.Request.Header.Get("authorization")
-        }
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":       "authorization_header_required",
-				"message":     "Please include a valid Bearer token in the Authorization header",
-			})
-			return
-		}
+func KeycloakMiddleware(client *gocloak.GoCloak, realm string, clientID string, clientSecret string) func(http.Handler) http.Handler{
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, `{"error":"authorization header required"}`, http.StatusUnauthorized)
+				return
+			}
 
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":       "invalid_authorization_header",
-				"message":     "Format should be: 'Bearer <token>'",
-			})
-			return
-		}
+			tokenParts := strings.Split(authHeader, " ")
+			if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
+				http.Error(w, `{"error":"invalid authorization format"}`, http.StatusUnauthorized)
+				return
+			}
 
-		token := tokenParts[1]
-		if token == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":       "empty_token",
-				"message":     "Token cannot be empty",
-			})
-			return
-		}
+			token := tokenParts[1]
+			if token == "" {
+				http.Error(w, `{"error":"empty token"}`, http.StatusUnauthorized)
+				return
+			}
 
-		rptResult, err := client.RetrospectToken(c.Request.Context(), token, clientID, clientSecret, realm)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":       "token_validation_failed",
-				"message":     "Failed to validate token",
-			})
-			return
-		}
+			// Validate token
+			rptResult, err := client.RetrospectToken(r.Context(), token, clientID, clientSecret, realm)
+			if err != nil || !*rptResult.Active {
+				http.Error(w, `{"error":"invalid or inactive token"}`, http.StatusUnauthorized)
+				return
+			}
 
-		if !*rptResult.Active {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":       "inactive_token",
-				"message":     "Token is not active",
-			})
-			return
-		}
+			// Optionally store token or claims in context for later use
+			ctx := context.WithValue(r.Context(), "token", token)
+			ctx = context.WithValue(ctx, "token_claims", rptResult)
 
-		c.Set("token", token)
-		c.Set("token_claims", rptResult)
-		c.Next()
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
+}
+
+func CORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Pass down the request to the next handler
+		next.ServeHTTP(w, r)
+	})
 }

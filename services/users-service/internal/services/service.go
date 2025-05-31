@@ -14,7 +14,7 @@ func NewKeycloakService(client *KeycloakClient) core.AuthService {
     return &KeycloakService{client: client}
 }
 
-func (s *KeycloakService) RegisterUser(user models.User) error {
+func (s *KeycloakService) RegisterUser(user *models.User) error {
     return s.client.RegisterUser(user.Username, user.Email, user.FirstName, user.LastName, user.Password)
 }
 

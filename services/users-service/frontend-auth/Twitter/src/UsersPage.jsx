@@ -7,7 +7,8 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await axios.get("http://localhost:8081/users", {
+        console.log(localStorage.getItem("token")); 
+        const res = await axios.get("http://localhost:8081/api/users", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
