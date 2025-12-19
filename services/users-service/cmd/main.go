@@ -1,13 +1,15 @@
 package main
 
 import (
+	"github.com/Twitter-Services-App/user-service/internal/logger"
 	"github.com/Twitter-Services-App/user-service/internal/services"
 	//"github.com/Twitter-Services-App/user-service/internal/core"
-	"github.com/Twitter-Services-App/user-service/internal/handlers"
-	"github.com/Twitter-Services-App/user-service/internal/middlewares"
-	"github.com/Twitter-Services-App/user-service/internal/configs"
 	"log"
 	"net/http"
+
+	"github.com/Twitter-Services-App/user-service/internal/configs"
+	"github.com/Twitter-Services-App/user-service/internal/handlers"
+	"github.com/Twitter-Services-App/user-service/internal/middlewares"
 )
 
 func main() {
@@ -15,7 +17,7 @@ func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal("Cannot load config:", err)
+		logger.Log.Fatal().Err(err).Msg("Cannot load config")
 	}
 	//1. Initialize Keycloak client with config
 	keycloakClient := auth.NewKeycloakClient(
@@ -66,7 +68,11 @@ func main() {
 		keycloakClient.ClientID,
 		keycloakClient.ClientSecret,
 	)(protectedMux)))
+
+	logger.Log.Info().Msg("Server running on :8081")
 	
 	log.Println("Server running on :8081")
-	http.ListenAndServe(":8081", mux)
+	handler := middlewares.CorrelationID(mux)
+
+	http.ListenAndServe(":8081", handler)
 }
