@@ -49,7 +49,13 @@ func main() {
 	publicMux := http.NewServeMux()
 	authHandler.RegisterRoutes(publicMux)
 	mux.Handle("/", middlewares.CORS(publicMux))
-
+	//Kubernetes / Load balancers need truth, not HTTP 200 lies.
+	///health/live → process alive?
+	///health/ready → dependencies ready?
+	health := &handlers.HealthHandler{}
+	mux.HandleFunc("/health/live", health.Live)
+	mux.HandleFunc("/health/ready", health.Ready)
+	
 	// Protected routes using middleware
 	protectedMux := http.NewServeMux()
 		
