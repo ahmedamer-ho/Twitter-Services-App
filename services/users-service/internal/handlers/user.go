@@ -57,3 +57,47 @@ func (h *UserHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{"user": user}
 	json.NewEncoder(w).Encode(resp)
 }
+// func (h *UserHandler) FollowUser(w http.ResponseWriter, r *http.Request) {
+// 	followerID := chi.URLParam(r, "id")
+// 	followedID := chi.URLParam(r, "targetId")
+
+// 	if err := h.userService.FollowUser(r.Context(), followerID, followedID); err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	w.WriteHeader(http.StatusNoContent)
+// }
+// func (s *UserService) FollowUser(
+// 	ctx context.Context,
+// 	followerID string,
+// 	followedID string,
+// ) error {
+
+// 	// 1️⃣ Business logic
+// 	if err := s.repo.AddFollower(ctx, followerID, followedID); err != nil {
+// 		return err
+// 	}
+
+// 	// 2️⃣ Create event AFTER success
+// 	event := kafka.Event{
+// 		EventID:       uuid.New().String(),
+// 		EventType:     "UserFollowed",
+// 		AggregateID:   followerID,
+// 		Timestamp:     time.Now().UTC(),
+// 		CorrelationID: observability.FromContext(ctx),
+// 		Payload: events.UserFollowedPayload{
+// 			FollowerID: followerID,
+// 			FollowedID: followedID,
+// 		},
+// 	}
+
+// 	// 3️⃣ Publish event
+// 	if err := s.producer.Publish(ctx, "user-events", event); err != nil {
+// 		// IMPORTANT: do NOT break user flow
+// 		// Log + retry later (outbox later)
+// 		return nil
+// 	}
+
+// 	return nil
+// }
