@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Twitter-Services-App/shared/kafka"
+	"github.com/yourusername/twitter-services-app/shared/adapters/postgres"
+	"github.com/yourusername/twitter-services-app/shared/kafka"
 )
 
 type OutboxWorker struct {
-	repo     OutboxReadRepository
+	repo     *postgres.OutboxRepository
 	producer kafka.Producer
 }
 func (w *OutboxWorker) Run(ctx context.Context) {
