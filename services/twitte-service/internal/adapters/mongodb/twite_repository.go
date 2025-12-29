@@ -1,13 +1,12 @@
 package mongodb
 
 import (
-        "context"
-        "time"
+	"context"
+	"time"
 
-        "go.mongodb.org/mongo-driver/mongo"
-        "go.mongodb.org/mongo-driver/bson"
-
-        "github.com/Twitter-Services-App/twite-service/internal/domain"
+	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/domain"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 type Repository struct {
 	collection *mongo.Collection
