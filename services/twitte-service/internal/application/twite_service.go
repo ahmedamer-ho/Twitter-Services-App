@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/Twitter-Services-App/twite-service/internal/domain"
+	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/domain"
 )
 
 type TwiteService struct {
