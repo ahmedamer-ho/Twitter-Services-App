@@ -10,4 +10,6 @@ type TweetRepository interface {
 	FindByIdempotencyKey(ctx context.Context, idempotencyKey string) (*Tweet, error)
 	WithTransaction(ctx context.Context, fn func(TweetRepository) error) error
 	InsertOutbox(ctx context.Context, event OutboxEvent) error
+	GetByIDs(ctx context.Context, ids []string) ([]Tweet, error)
+	GetLatestByAuthors(ctx context.Context, authorIDs []string) ([]Tweet, error)
 }

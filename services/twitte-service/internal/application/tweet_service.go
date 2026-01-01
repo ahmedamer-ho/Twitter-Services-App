@@ -12,31 +12,10 @@ import (
 type TweetService struct {
 	repo domain.TweetRepository
 }
-// type TweetService interface {
-// 	CreateTweet(
-// 		ctx context.Context,
-// 		authorID string,
-// 		content string,
-// 		idempotencyKey string,
-// 		correlationID string,
-// 	) (string, error)
-// }
-
 
 func NewTweetService(repo domain.TweetRepository) *TweetService {
 	return &TweetService{repo: repo}
 }
-// func (s *TweetService) CreateTweet(ctx context.Context, authorID, content string) error {
-// 	t := domain.Tweet{
-// 		ID:        uuid.NewString(),
-// 		AuthorID:  authorID,
-// 		Content:   content,
-// 		CreatedAt: time.Now().UTC(),
-// 	}
-
-// 	return s.repo.Insert(ctx, t)
-// }
-
 
 func (s *TweetService) CreateTweet(
 	ctx context.Context,
