@@ -19,9 +19,9 @@ func NewRouter() http.Handler {
 		w.Write([]byte("ready"))
 	})
 
-	mux.HandleFunc("/twites", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/Tweets", func(w http.ResponseWriter, _ *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Twite endpoint placeholder",
+			"message": "Tweet endpoint placeholder",
 		})
 	})
 

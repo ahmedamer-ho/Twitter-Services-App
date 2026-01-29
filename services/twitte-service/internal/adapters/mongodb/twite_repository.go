@@ -8,43 +8,44 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
 type Repository struct {
 	collection *mongo.Collection
 }
 
 func NewRepository(db *mongo.Database) *Repository {
 	return &Repository{
-			collection: db.Collection("twites"),
+		collection: db.Collection("Tweets"),
 	}
 }
-func (r *Repository) Insert(ctx context.Context, t domain.Twite) error {
+func (r *Repository) Insert(ctx context.Context, t domain.Tweet) error {
 	_, err := r.collection.InsertOne(ctx, t)
 	return err
 }
-func (r *Repository) FindByAuthor(ctx context.Context, authorID string, limit int) ([]domain.Twite, error) {
+func (r *Repository) FindByAuthor(ctx context.Context, authorID string, limit int) ([]domain.Tweet, error) {
 	cursor, err := r.collection.Find(ctx,
-			bson.M{"authorId": authorID, "deletedAt": nil},
+		bson.M{"authorId": authorID, "deletedAt": nil},
 	)
 	if err != nil {
-			return nil, err
+		return nil, err
 	}
 
-	var twites []domain.Twite
-	err = cursor.All(ctx, &twites)
-	return twites, err
+	var Tweets []domain.Tweet
+	err = cursor.All(ctx, &Tweets)
+	return Tweets, err
 }
 func (r *Repository) SoftDelete(ctx context.Context, id string) error {
 	now := time.Now().UTC()
 	expire := now.Add(30 * 24 * time.Hour)
 
 	_, err := r.collection.UpdateOne(ctx,
-			bson.M{"_id": id},
-			bson.M{
-					"$set": bson.M{
-							"deletedAt": now,
-							"expireAt":  expire,
-					},
+		bson.M{"_id": id},
+		bson.M{
+			"$set": bson.M{
+				"deletedAt": now,
+				"expireAt":  expire,
 			},
+		},
 	)
 
 	return err

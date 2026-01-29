@@ -3,8 +3,13 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/segmentio/kafka-go"
+	"github.com/yourusername/twitter-services-app/shared/observability"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Producer interface {
@@ -25,6 +30,15 @@ func NewProducer(brokers []string) Producer {
 }
 
 func (p *kafkaProducer) Publish(ctx context.Context, topic string, event Event) error {
+	// Start Span
+	tracer := otel.Tracer("kafka-producer")
+	ctx, span := tracer.Start(ctx, fmt.Sprintf("publish %s", topic), trace.WithAttributes(
+		attribute.String("messaging.system", "kafka"),
+		attribute.String("messaging.destination", topic),
+		attribute.String("messaging.destination_kind", "topic"),
+	))
+	defer span.End()
+
 	value, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -39,6 +53,9 @@ func (p *kafkaProducer) Publish(ctx context.Context, topic string, event Event) 
 			{Key: EventTypeHeader, Value: []byte(event.EventType)},
 		},
 	}
+
+	// Propagate Trace Context
+	observability.InjectKafkaHeaders(ctx, &msg)
 
 	return p.writer.WriteMessages(ctx, msg)
 }
