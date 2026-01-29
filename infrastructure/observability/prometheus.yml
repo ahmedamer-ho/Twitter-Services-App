@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 5s # Scrape frequently for demo purposes (usually 15s-1m in prod)
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'twitte-service'
+    static_configs:
+      - targets: ['host.docker.internal:2112'] # Assuming service runs on host port 2112 for metrics

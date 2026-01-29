@@ -1,0 +1,141 @@
+version: '3.8'
+
+networks:
+  twitter-network:
+    driver: bridge
+
+services:
+  # Infrastructure Services
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - twitter-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - twitter-network
+
+  mongodb:
+    image: mongo:6
+    ports:
+      - "27018:27017"
+    networks:
+      - twitter-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users_db
+    ports:
+      - "5433:5432"
+    networks:
+      - twitter-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    ports:
+      - "8085:8080"
+    networks:
+      - twitter-network
+
+  # Observability
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - twitter-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    # volumes:
+    #   - ./infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9091:9090"
+    networks:
+      - twitter-network
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - twitter-network
+
+  # Application Services
+  twitte-service:
+    build:
+      context: .
+      dockerfile: services/twitte-service/Dockerfile
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - PORT=8082
+    ports:
+      - "8082:8082"
+    depends_on:
+      - mongodb
+      - kafka
+    networks:
+      - twitter-network
+
+  users-service:
+    build:
+      context: services/users-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8081
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=myrealm
+      - KEYCLOAK_CLIENT_ID=myclient
+      - KEYCLOAK_CLIENT_SECRET=mysecret
+      - KEYCLOAK_ADMIN_USERNAME=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - "8081:8081"
+    depends_on:
+      - keycloak
+      - postgres
+    networks:
+      - twitter-network
+
+  api-gateway:
+    build:
+      context: services/api-gateway
+      dockerfile: Dockerfile
+    environment:
+      - USERS_SERVICE_URL=http://users-service:8081
+      - TWITTE_SERVICE_URL=http://twitte-service:8082
+    ports:
+      - "8090:8090"
+    depends_on:
+      - users-service
+      - twitte-service
+    networks:
+      - twitter-network

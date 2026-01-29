@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # Jaeger: For Distributed Tracing
+  # Why: It collects, stores, and visualizes traces (request paths across microservices).
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "14268:14268" # Thrift
+      - "14250:14250" # Model (gRPC)
+      - "9411:9411"   # Zipkin
+
+  # Prometheus: For Metrics Collection
+  # Why: It scrapes numeric data (cpu, memory, request_count, latency) from services.
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090" # UI
+
+  # Grafana: For Visualization (Dashboards)
+  # Why: It pulls data from Prometheus (and Jaeger/Tempo) to create beautiful functional boards.
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000" # UI
+    depends_on:
+      - prometheus

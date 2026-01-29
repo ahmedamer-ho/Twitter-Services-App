@@ -1,4 +1,3 @@
-
 package config
 
 import (
@@ -6,27 +5,40 @@ import (
 )
 
 type MongoDBConfig struct {
-	URL           string `mapstructure:"MONGO_URI"`
+	URL string `mapstructure:"MONGO_URI"`
 }
 
 type Config struct {
-	Port     int           `mapstructure:"PORT"`
+	Port    int           `mapstructure:"PORT"`
 	MongoDB MongoDBConfig `mapstructure:",squash"`
 }
 
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName(".env")
-	viper.SetConfigType("env")
-	viper.AddConfigPath("../..") // project root
 	viper.AutomaticEnv()
 
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
-	}
+	// Bind environment variables to ensure Unmarshal works even without a config file
+	viper.BindEnv("MONGO_URI")
+	viper.BindEnv("PORT")
+
+	viper.SetConfigName(".env")
+	viper.SetConfigType("env")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("../..")
+
+	// Ignore error if config file is not found
+	_ = viper.ReadInConfig()
 
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, err
+	}
+
+	// Double check fields if unmarshal missed them (squash can be tricky)
+	if cfg.MongoDB.URL == "" {
+		cfg.MongoDB.URL = viper.GetString("MONGO_URI")
+	}
+	if cfg.Port == 0 {
+		cfg.Port = viper.GetInt("PORT")
 	}
 
 	return &cfg, nil

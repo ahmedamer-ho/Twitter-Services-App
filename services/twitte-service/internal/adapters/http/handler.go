@@ -3,8 +3,12 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/application"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type Handler struct {
@@ -34,6 +38,14 @@ func (h *Handler) CreateTweet(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value("userId").(string)
 	correlationID := r.Context().Value("correlationId").(string)
+
+	// Observability: Tweet Latency
+	meter := otel.GetMeterProvider().Meter("twitte-service")
+	histogram, _ := meter.Float64Histogram("tweet_creation_latency", metric.WithUnit("s"))
+	start := time.Now()
+	defer func() {
+		histogram.Record(r.Context(), time.Since(start).Seconds(), metric.WithAttributes(attribute.String("status", "ok")))
+	}()
 
 	tweetID, err := h.service.CreateTweet(
 		r.Context(),

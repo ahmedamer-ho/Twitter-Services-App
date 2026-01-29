@@ -2,9 +2,9 @@ package middlewares
 
 import (
 	"context"
+	"log"
 	"net/http"
 
-	"github.com/Twitter-Services-App/user-service/internal/logger"
 	"github.com/google/uuid"
 )
 
@@ -22,10 +22,7 @@ func CorrelationID(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), CorrelationIDKey, correlationID)
 		w.Header().Set("X-Correlation-ID", correlationID)
 
-		logger.Log.Info().
-			Str("correlation_id", correlationID).
-			Str("route", r.URL.Path).
-			Msg("Request received")
+		log.Printf("Request received correlation_id=%s route=%s", correlationID, r.URL.Path)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
