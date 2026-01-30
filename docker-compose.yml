@@ -97,6 +97,9 @@ services:
     environment:
       - MONGO_URI=mongodb://mongodb:27017
       - PORT=8082
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TWEET_TOPIC=tweets
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     ports:
       - "8082:8082"
     depends_on:
@@ -117,6 +120,7 @@ services:
       - KEYCLOAK_CLIENT_SECRET=mysecret
       - KEYCLOAK_ADMIN_USERNAME=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     ports:
       - "8081:8081"
     depends_on:

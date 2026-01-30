@@ -12,4 +12,6 @@ type TweetRepository interface {
 	InsertOutbox(ctx context.Context, event OutboxEvent) error
 	GetByIDs(ctx context.Context, ids []string) ([]Tweet, error)
 	GetLatestByAuthors(ctx context.Context, authorIDs []string) ([]Tweet, error)
+	FetchUnsentEvents(ctx context.Context, limit int) ([]OutboxEvent, error)
+	MarkEventAsSent(ctx context.Context, id string) error
 }

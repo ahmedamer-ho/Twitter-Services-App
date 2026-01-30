@@ -14,6 +14,11 @@ import (
 type Handler struct {
 	service *application.TweetService
 }
+
+func NewHandler(service *application.TweetService) *Handler {
+	return &Handler{service: service}
+}
+
 type CreateTweetRequest struct {
 	Content string `json:"content"`
 }
@@ -36,8 +41,14 @@ func (h *Handler) CreateTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("userId").(string)
-	correlationID := r.Context().Value("correlationId").(string)
+	userID, _ := r.Context().Value("userId").(string)
+	if userID == "" {
+		userID = "anonymous"
+	}
+	correlationID, _ := r.Context().Value("correlationId").(string)
+	if correlationID == "" {
+		correlationID = "manual-test"
+	}
 
 	// Observability: Tweet Latency
 	meter := otel.GetMeterProvider().Meter("twitte-service")

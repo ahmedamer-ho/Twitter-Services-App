@@ -6,9 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	httpadapter "github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/http"
-	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/mongodb"
+	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/kafka"
+	mongoadapter "github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/mongodb"
+	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/application"
 	config "github.com/yourusername/twitter-services-app/services/twitte-service/internal/configs"
 	"github.com/yourusername/twitter-services-app/shared/observability"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -49,10 +52,32 @@ func main() {
 		log.Fatal(err)
 	}
 
-	_ = mongodb.NewRepository(client.Database("Tweets")) // used later
+	// Kafka
+	if len(cfg.Kafka.Brokers) == 0 {
+		cfg.Kafka.Brokers = []string{"kafka:9092"}
+	}
+	if cfg.Kafka.Topic == "" {
+		cfg.Kafka.Topic = "tweets"
+	}
+
+	producer := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.Topic)
+	defer producer.Close()
+
+	// Repositories
+	repo := mongoadapter.NewRepository(client.Database("Tweets"))
+
+	// Application Services
+	tweetService := application.NewTweetService(repo)
+
+	// Outbox Worker
+	outboxWorker := application.NewOutboxWorker(repo, producer, 5*time.Second)
+	go outboxWorker.Start(ctx)
+
+	// HTTP Handler
+	tweetHandler := httpadapter.NewHandler(tweetService)
 
 	// HTTP
-	router := httpadapter.NewRouter()
+	router := httpadapter.NewRouter(tweetHandler)
 
 	// Add OpenTelemetry Middleware
 	handler := otelhttp.NewHandler(router, "twitte-service")
