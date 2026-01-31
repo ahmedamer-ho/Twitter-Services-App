@@ -1,24 +1,37 @@
 package main
 
 import (
+	"context"
+
 	"github.com/Twitter-Services-App/user-service/internal/logger"
-	"github.com/Twitter-Services-App/user-service/internal/services"
+	auth "github.com/Twitter-Services-App/user-service/internal/services"
+
 	//"github.com/Twitter-Services-App/user-service/internal/core"
 	"log"
 	"net/http"
 
-	"github.com/Twitter-Services-App/user-service/internal/configs"
+	config "github.com/Twitter-Services-App/user-service/internal/configs"
 	"github.com/Twitter-Services-App/user-service/internal/handlers"
 	"github.com/Twitter-Services-App/user-service/internal/middlewares"
+	"github.com/yourusername/twitter-services-app/shared/observability"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func main() {
-     // Load configuration
+	// Load configuration
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Log.Fatal().Err(err).Msg("Cannot load config")
 	}
+	// Initialize Observability
+	ctx := context.Background()
+	shutdown, err := observability.InitProvider("users-service", "1.0.0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer shutdown(ctx)
+
 	//1. Initialize Keycloak client with config
 	keycloakClient := auth.NewKeycloakClient(
 		cfg.Keycloak.URL,
@@ -32,9 +45,9 @@ func main() {
 	//// 2. Inject client into service
 	// High-level modules (handlers) depending on abstractions (AuthService)
 
-    // Low-level details (Keycloak implementation) defined separately
+	// Low-level details (Keycloak implementation) defined separately
 
-    // Composition root (main.go) wiring everything together
+	// Composition root (main.go) wiring everything together
 	authService := auth.NewKeycloakService(keycloakClient)
 
 	//// 3. Inject service into handlers
@@ -55,12 +68,11 @@ func main() {
 	health := &handlers.HealthHandler{}
 	mux.HandleFunc("/health/live", health.Live)
 	mux.HandleFunc("/health/ready", health.Ready)
-	
+
 	// Protected routes using middleware
 	protectedMux := http.NewServeMux()
-		
-	userHandler.RegisterRoutes(protectedMux)
 
+	userHandler.RegisterRoutes(protectedMux)
 
 	// protectedMux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 	// 	w.Header().Set("Content-Type", "application/json")
@@ -68,7 +80,7 @@ func main() {
 	// })
 
 	// Middleware wraps protected routes
-	mux.Handle("/api/",middlewares.CORS( middlewares.KeycloakMiddleware(
+	mux.Handle("/api/", middlewares.CORS(middlewares.KeycloakMiddleware(
 		keycloakClient.Client,
 		keycloakClient.Realm,
 		keycloakClient.ClientID,
@@ -76,9 +88,12 @@ func main() {
 	)(protectedMux)))
 
 	logger.Log.Info().Msg("Server running on :8081")
-	
+
 	log.Println("Server running on :8081")
 	handler := middlewares.CorrelationID(mux)
 
-	http.ListenAndServe(":8081", handler)
+	// Wrap with OpenTelemetry
+	otelHandler := otelhttp.NewHandler(handler, "users-service")
+
+	http.ListenAndServe(":8081", otelHandler)
 }

@@ -6,7 +6,7 @@ import (
 )
 
 // NewRouter wires HTTP routes
-func NewRouter() http.Handler {
+func NewRouter(h *Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health/live", func(w http.ResponseWriter, _ *http.Request) {
@@ -19,7 +19,11 @@ func NewRouter() http.Handler {
 		w.Write([]byte("ready"))
 	})
 
-	mux.HandleFunc("/Tweets", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/tweets/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.CreateTweet(w, r)
+			return
+		}
 		json.NewEncoder(w).Encode(map[string]string{
 			"message": "Tweet endpoint placeholder",
 		})

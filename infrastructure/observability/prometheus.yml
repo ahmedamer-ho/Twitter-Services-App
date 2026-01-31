@@ -8,4 +8,16 @@ scrape_configs:
 
   - job_name: 'twitte-service'
     static_configs:
-      - targets: ['host.docker.internal:2112'] # Assuming service runs on host port 2112 for metrics
+      - targets: ['twitte-service:2112']
+
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:2112']
+
+  - job_name: 'users-service'
+    static_configs:
+      - targets: ['users-service:2112']
+
+  - job_name: 'timeline-service'
+    static_configs:
+      - targets: ['timeline-service:2112']

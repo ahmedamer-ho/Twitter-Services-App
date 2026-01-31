@@ -11,6 +11,7 @@ type MongoDBConfig struct {
 type KafkaConfig struct {
 	Brokers []string `mapstructure:"KAFKA_BROKERS"`
 	Topic   string   `mapstructure:"KAFKA_TWEET_TOPIC"`
+	GroupID string   `mapstructure:"KAFKA_GROUP_ID"`
 }
 
 type Config struct {
@@ -22,18 +23,17 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	viper.AutomaticEnv()
 
-	// Bind environment variables to ensure Unmarshal works even without a config file
 	viper.BindEnv("MONGO_URI")
 	viper.BindEnv("PORT")
 	viper.BindEnv("KAFKA_BROKERS")
 	viper.BindEnv("KAFKA_TWEET_TOPIC")
+	viper.BindEnv("KAFKA_GROUP_ID")
 
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("../..")
 
-	// Ignore error if config file is not found
 	_ = viper.ReadInConfig()
 
 	var cfg Config
@@ -41,7 +41,6 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	// Double check fields if unmarshal missed them (squash can be tricky)
 	if cfg.MongoDB.URL == "" {
 		cfg.MongoDB.URL = viper.GetString("MONGO_URI")
 	}
@@ -53,6 +52,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.Kafka.Topic == "" {
 		cfg.Kafka.Topic = viper.GetString("KAFKA_TWEET_TOPIC")
+	}
+	if cfg.Kafka.GroupID == "" {
+		cfg.Kafka.GroupID = viper.GetString("KAFKA_GROUP_ID")
 	}
 
 	return &cfg, nil

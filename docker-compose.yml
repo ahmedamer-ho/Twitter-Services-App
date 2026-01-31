@@ -71,8 +71,8 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
-    # volumes:
-    #   - ./infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml
+    volumes:
+      - ./infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9091:9090"
     networks:
@@ -97,6 +97,9 @@ services:
     environment:
       - MONGO_URI=mongodb://mongodb:27017
       - PORT=8082
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TWEET_TOPIC=tweets
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     ports:
       - "8082:8082"
     depends_on:
@@ -107,8 +110,8 @@ services:
 
   users-service:
     build:
-      context: services/users-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/users-service/Dockerfile
     environment:
       - PORT=8081
       - KEYCLOAK_URL=http://keycloak:8080
@@ -117,6 +120,7 @@ services:
       - KEYCLOAK_CLIENT_SECRET=mysecret
       - KEYCLOAK_ADMIN_USERNAME=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     ports:
       - "8081:8081"
     depends_on:
@@ -127,15 +131,36 @@ services:
 
   api-gateway:
     build:
-      context: services/api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
     environment:
       - USERS_SERVICE_URL=http://users-service:8081
       - TWITTE_SERVICE_URL=http://twitte-service:8082
+      - TIMELINE_SERVICE_URL=http://timeline-service:8083
     ports:
       - "8090:8090"
     depends_on:
       - users-service
       - twitte-service
+      - timeline-service
+    networks:
+      - twitter-network
+
+  timeline-service:
+    build:
+      context: .
+      dockerfile: services/timeline-service/Dockerfile
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - PORT=8083
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TWEET_TOPIC=tweets
+      - KAFKA_GROUP_ID=timeline-group
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+    ports:
+      - "8083:8083"
+    depends_on:
+      - mongodb
+      - kafka
     networks:
       - twitter-network
