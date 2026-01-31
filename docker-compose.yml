@@ -164,3 +164,13 @@ services:
       - kafka
     networks:
       - twitter-network
+  web-ui:
+    build:
+      context: ./web-ui
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - twitter-network

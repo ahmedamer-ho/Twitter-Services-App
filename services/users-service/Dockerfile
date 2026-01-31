@@ -4,7 +4,8 @@ COPY go.mod go.sum ./
 COPY services/users-service/go.mod services/users-service/
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /main services/users-service/cmd/main.go
+WORKDIR /app/services/users-service
+RUN CGO_ENABLED=0 GOOS=linux go build -o /main cmd/main.go
 
 FROM alpine:latest
 WORKDIR /root/
