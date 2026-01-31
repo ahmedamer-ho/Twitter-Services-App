@@ -19,7 +19,7 @@ func NewRouter(h *Handler) http.Handler {
 		w.Write([]byte("ready"))
 	})
 
-	mux.HandleFunc("/tweets", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/tweets/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			h.CreateTweet(w, r)
 			return

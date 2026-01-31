@@ -1,0 +1,16 @@
+Connection to localhost (127.0.0.1) 9092 port [tcp/*] succeeded!
+Connection to localhost (127.0.0.1) 27018 port [tcp/*] succeeded!
+Connection to localhost (127.0.0.1) 5433 port [tcp/*] succeeded!
+--- HTTP Probes ---
+API Gateway (8090): 404
+Users Service (8081): 200
+Twitte Service (8082): 404
+Timeline Service (8083): 200
+Keycloak (8085): 200
+Jaeger (16686): 200
+Prometheus (9091): 302
+Grafana (3001): 302
+--- Probes via API Gateway ---
+Gateway -> Users Service: 200
+Gateway -> Twitte Service: 404
+Gateway -> Timeline Service: 200
