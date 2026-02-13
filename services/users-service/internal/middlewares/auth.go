@@ -1,14 +1,14 @@
 package middlewares
 
 import (
+	"context"
 	"net/http"
 	"strings"
-   "context"
-	"github.com/Nerzal/gocloak/v12"
 
+	"github.com/Nerzal/gocloak/v12"
 )
 
-func KeycloakMiddleware(client *gocloak.GoCloak, realm string, clientID string, clientSecret string) func(http.Handler) http.Handler{
+func KeycloakMiddleware(client *gocloak.GoCloak, realm string, clientID string, clientSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -43,23 +43,4 @@ func KeycloakMiddleware(client *gocloak.GoCloak, realm string, clientID string, 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-}
-
-func CORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-		// Handle preflight requests
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		// Pass down the request to the next handler
-		next.ServeHTTP(w, r)
-	})
 }

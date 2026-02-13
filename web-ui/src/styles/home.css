@@ -1,0 +1,18 @@
+.home-header {
+    position: sticky;
+    top: 0;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+.timeline-loading,
+.timeline-empty {
+    padding: 32px;
+    text-align: center;
+    color: var(--text-dim);
+}

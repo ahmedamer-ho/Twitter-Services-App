@@ -52,6 +52,7 @@ func main() {
 
 	log.Println("API Gateway running on :8090")
 	handler := middlewares.CorrelationID(mux)
+	handler = middlewares.CORS(handler)
 
 	// Wrap with OpenTelemetry
 	otelHandler := otelhttp.NewHandler(handler, "api-gateway")

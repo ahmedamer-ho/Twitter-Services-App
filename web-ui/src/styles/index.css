@@ -155,3 +155,52 @@ textarea:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 1px var(--primary);
 }
+
+/* Utilities */
+.text-center {
+    text-align: center;
+}
+
+.p-8 {
+    padding: 32px;
+}
+
+.text-gray-500 {
+    color: var(--text-dim);
+}
+
+.text-primary {
+    color: var(--primary);
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.flex {
+    display: flex;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+.mb-8 {
+    margin-bottom: 32px;
+}

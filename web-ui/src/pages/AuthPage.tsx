@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext.tsx';
-import { api } from '../services/api.ts';
+import { useAuth } from '../context/AuthContext';
+import { api, endpoints } from '../services/api';
+import '../styles/auth.css';
 
-export const AuthFeature: React.FC = () => {
+export const AuthPage: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [formData, setFormData] = useState({
         username: '',
@@ -31,20 +32,20 @@ export const AuthFeature: React.FC = () => {
 
         try {
             if (isLogin) {
-                const data = await api.post('/auth/login', {
+                const data = await api.post(endpoints.auth.login, {
                     username: formData.username,
                     password: formData.password,
                 });
 
-                // In a real app, you'd decode the JWT to get user info or fetch profile.
-                // For now, let's mock the user object from the response or just use the username.
+                // In a real app the token should contain user ID and payload
+                // For now we assume the backend returns what we need or we decode it
                 login(data.token, {
-                    id: 'placeholder-id',
+                    id: data.id || 'placeholder-id',
                     username: formData.username,
                     email: formData.email || `${formData.username}@example.com`
                 });
             } else {
-                await api.post('/auth/register', {
+                await api.post(endpoints.auth.register, {
                     username: formData.username,
                     password: formData.password,
                     email: formData.email,
@@ -62,46 +63,39 @@ export const AuthFeature: React.FC = () => {
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '100vh',
-            padding: '20px'
-        }}>
-            <div className="premium-card" style={{ width: '100%', maxWidth: '400px' }}>
-                <h2 style={{ marginBottom: '24px', textAlign: 'center' }}>
-                    {isLogin ? 'Welcome Back' : 'Join Twitter'}
+        <div className="auth-container">
+            <div className="auth-box">
+                <div className="auth-logo">
+                    <h1>𝕏</h1>
+                </div>
+
+                <h2 className="auth-title">
+                    {isLogin ? 'Sign in to X' : 'Join X today'}
                 </h2>
 
                 {error && (
-                    <div style={{
-                        color: error.includes('successfully') ? 'var(--success)' : 'var(--error)',
-                        marginBottom: '16px',
-                        fontSize: '0.9rem',
-                        textAlign: 'center'
-                    }}>
+                    <div className={`auth-error ${error.includes('successfully') ? 'auth-success' : ''}`}>
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={handleSubmit} className="auth-form">
                     {!isLogin && (
                         <>
-                            <div style={{ display: 'flex', gap: '12px' }}>
+                            <div className="auth-input-group">
                                 <input
                                     name="firstname"
                                     placeholder="First Name"
                                     required
                                     onChange={handleChange}
-                                    style={{ width: '50%' }}
+                                    className="auth-input"
                                 />
                                 <input
                                     name="lastname"
                                     placeholder="Last Name"
                                     required
                                     onChange={handleChange}
-                                    style={{ width: '50%' }}
+                                    className="auth-input"
                                 />
                             </div>
                             <input
@@ -110,6 +104,7 @@ export const AuthFeature: React.FC = () => {
                                 placeholder="Email Address"
                                 required
                                 onChange={handleChange}
+                                className="auth-input"
                             />
                         </>
                     )}
@@ -118,6 +113,7 @@ export const AuthFeature: React.FC = () => {
                         placeholder="Username"
                         required
                         onChange={handleChange}
+                        className="auth-input"
                     />
                     <input
                         name="password"
@@ -125,26 +121,26 @@ export const AuthFeature: React.FC = () => {
                         placeholder="Password"
                         required
                         onChange={handleChange}
+                        className="auth-input"
                     />
 
                     <button
                         type="submit"
-                        className="btn-primary"
                         disabled={loading}
-                        style={{ marginTop: '8px' }}
+                        className="auth-submit-btn"
                     >
-                        {loading ? 'Processing...' : (isLogin ? 'Log In' : 'Sign Up')}
+                        {loading ? 'Processing...' : (isLogin ? 'Next' : 'Create account')}
                     </button>
                 </form>
 
-                <div style={{ marginTop: '24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                <div className="auth-footer">
                     {isLogin ? "Don't have an account? " : "Already have an account? "}
-                    <span
+                    <button
                         onClick={handleToggle}
-                        style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: '600' }}
+                        className="auth-toggle-link"
                     >
-                        {isLogin ? 'Sign Up' : 'Log In'}
-                    </span>
+                        {isLogin ? 'Sign up' : 'Sign in'}
+                    </button>
                 </div>
             </div>
         </div>

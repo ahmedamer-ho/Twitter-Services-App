@@ -1,0 +1,142 @@
+/* Tweet Component */
+.tweet {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.tweet:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.tweet-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #333;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.tweet-content {
+    flex: 1;
+}
+
+.tweet-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.tweet-author-name {
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.tweet-author-handle,
+.tweet-time {
+    color: var(--text-dim);
+}
+
+.tweet-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.tweet-actions {
+    display: flex;
+    justify-content: space-between;
+    max-width: 425px;
+    color: var(--text-dim);
+}
+
+.tweet-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.tweet-action-btn:hover {
+    color: var(--primary);
+}
+
+.tweet-action-btn.like:hover {
+    color: #f91880;
+}
+
+.tweet-action-btn.retweet:hover {
+    color: #00ba7c;
+}
+
+/* TweetBox Component */
+.tweet-box {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+}
+
+.tweet-box-content {
+    flex: 1;
+}
+
+.tweet-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    resize: none;
+    min-height: 50px;
+    outline: none;
+    padding: 12px 0;
+    font-family: inherit;
+}
+
+.tweet-input::placeholder {
+    color: var(--text-dim);
+}
+
+.tweet-box-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+.tweet-submit-btn {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 9999px;
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.tweet-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

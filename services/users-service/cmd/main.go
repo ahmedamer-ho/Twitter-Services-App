@@ -58,10 +58,10 @@ func main() {
 	// ServeMux as router
 	mux := http.NewServeMux()
 
-	//Public routes with CORS
+	//Public routes
 	publicMux := http.NewServeMux()
 	authHandler.RegisterRoutes(publicMux)
-	mux.Handle("/", middlewares.CORS(publicMux))
+	mux.Handle("/", publicMux)
 	//Kubernetes / Load balancers need truth, not HTTP 200 lies.
 	///health/live → process alive?
 	///health/ready → dependencies ready?
@@ -80,12 +80,12 @@ func main() {
 	// })
 
 	// Middleware wraps protected routes
-	mux.Handle("/api/", middlewares.CORS(middlewares.KeycloakMiddleware(
+	mux.Handle("/api/", middlewares.KeycloakMiddleware(
 		keycloakClient.Client,
 		keycloakClient.Realm,
 		keycloakClient.ClientID,
 		keycloakClient.ClientSecret,
-	)(protectedMux)))
+	)(protectedMux))
 
 	logger.Log.Info().Msg("Server running on :8081")
 
