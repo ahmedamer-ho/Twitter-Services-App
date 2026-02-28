@@ -9,7 +9,7 @@ import (
 	"time"
 
 	httpadapter "github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/http"
-	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/kafka"
+	"github.com/yourusername/twitter-services-app/shared/nats"
 	mongoadapter "github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/mongodb"
 	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/application"
 	config "github.com/yourusername/twitter-services-app/services/twitte-service/internal/configs"
@@ -52,16 +52,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Kafka
-	if len(cfg.Kafka.Brokers) == 0 {
-		cfg.Kafka.Brokers = []string{"kafka:9092"}
+	// NATS
+	if cfg.NATS.URL == "" {
+		cfg.NATS.URL = "nats://nats:4222"
 	}
-	if cfg.Kafka.Topic == "" {
-		cfg.Kafka.Topic = "tweets"
+	if cfg.NATS.Subject == "" {
+		cfg.NATS.Subject = "tweets"
 	}
+	
+	// Create NATS connection & JetStream Context
+	nc, js, err := nats.InitNATS(cfg.NATS.URL)
+	if err != nil {
+		log.Fatalf("Failed to connect to NATS: %v", err)
+	}
+	defer nc.Close()
 
-	producer := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.Topic)
-	defer producer.Close()
+	producer := nats.NewProducer(js)
 
 	// Repositories
 	repo := mongoadapter.NewRepository(client.Database("Tweets"))

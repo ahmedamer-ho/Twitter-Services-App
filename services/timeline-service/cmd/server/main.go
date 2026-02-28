@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	httpadapter "github.com/yourusername/twitter-services-app/services/timeline-service/internal/adapters/http"
-	"github.com/yourusername/twitter-services-app/services/timeline-service/internal/adapters/kafka"
+	"github.com/yourusername/twitter-services-app/shared/nats"
 	mongoadapter "github.com/yourusername/twitter-services-app/services/timeline-service/internal/adapters/mongodb"
 	"github.com/yourusername/twitter-services-app/services/timeline-service/internal/application"
 	config "github.com/yourusername/twitter-services-app/services/timeline-service/internal/configs"
@@ -47,10 +47,25 @@ func main() {
 	// Application Service
 	timelineService := application.NewTimelineService(repo)
 
-	// Kafka Consumer
-	kafkaConsumer := kafka.NewConsumer(cfg.Kafka.Brokers, cfg.Kafka.Topic, cfg.Kafka.GroupID, timelineService)
-	go kafkaConsumer.Start(ctx)
-	defer kafkaConsumer.Close()
+	// NATS Consumer
+	if cfg.NATS.URL == "" {
+		cfg.NATS.URL = "nats://nats:4222"
+	}
+	if cfg.NATS.Subject == "" {
+		cfg.NATS.Subject = "tweets"
+	}
+	if cfg.NATS.QueueGroup == "" {
+		cfg.NATS.QueueGroup = "timeline-group"
+	}
+
+	nc, js, err := nats.InitNATS(cfg.NATS.URL)
+	if err != nil {
+		log.Fatalf("Failed to connect to NATS: %v", err)
+	}
+	defer nc.Close()
+
+	natsConsumer := nats.NewConsumer(js, cfg.NATS.Subject, cfg.NATS.QueueGroup, timelineService.HandleTweetEvent) // Adjust method name if needed
+	go natsConsumer.Start(ctx)
 
 	// HTTP Handler
 	handler := httpadapter.NewHandler(timelineService)

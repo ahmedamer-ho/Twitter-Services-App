@@ -1,4 +1,4 @@
-package kafka
+package nats
 
 import "time"
 
@@ -9,5 +9,5 @@ type Event struct {
 	Timestamp     time.Time   `json:"timestamp"`
 	CorrelationID string      `json:"correlationId"`
 	Payload       interface{} `json:"payload"`
-	RetryCount    int       `json:"retryCount"`
+	RetryCount    int         `json:"retryCount"`
 }

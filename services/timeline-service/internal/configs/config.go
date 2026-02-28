@@ -8,16 +8,16 @@ type MongoDBConfig struct {
 	URL string `mapstructure:"MONGO_URI"`
 }
 
-type KafkaConfig struct {
-	Brokers []string `mapstructure:"KAFKA_BROKERS"`
-	Topic   string   `mapstructure:"KAFKA_TWEET_TOPIC"`
-	GroupID string   `mapstructure:"KAFKA_GROUP_ID"`
+type NATSConfig struct {
+	URL        string `mapstructure:"NATS_URL"`
+	Subject    string `mapstructure:"NATS_TWEET_SUBJECT"`
+	QueueGroup string `mapstructure:"NATS_QUEUE_GROUP"`
 }
 
 type Config struct {
 	Port    int           `mapstructure:"PORT"`
 	MongoDB MongoDBConfig `mapstructure:",squash"`
-	Kafka   KafkaConfig   `mapstructure:",squash"`
+	NATS    NATSConfig    `mapstructure:",squash"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -25,9 +25,9 @@ func LoadConfig() (*Config, error) {
 
 	viper.BindEnv("MONGO_URI")
 	viper.BindEnv("PORT")
-	viper.BindEnv("KAFKA_BROKERS")
-	viper.BindEnv("KAFKA_TWEET_TOPIC")
-	viper.BindEnv("KAFKA_GROUP_ID")
+	viper.BindEnv("NATS_URL")
+	viper.BindEnv("NATS_TWEET_SUBJECT")
+	viper.BindEnv("NATS_QUEUE_GROUP")
 
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
@@ -47,14 +47,14 @@ func LoadConfig() (*Config, error) {
 	if cfg.Port == 0 {
 		cfg.Port = viper.GetInt("PORT")
 	}
-	if len(cfg.Kafka.Brokers) == 0 {
-		cfg.Kafka.Brokers = viper.GetStringSlice("KAFKA_BROKERS")
+	if cfg.NATS.URL == "" {
+		cfg.NATS.URL = viper.GetString("NATS_URL")
 	}
-	if cfg.Kafka.Topic == "" {
-		cfg.Kafka.Topic = viper.GetString("KAFKA_TWEET_TOPIC")
+	if cfg.NATS.Subject == "" {
+		cfg.NATS.Subject = viper.GetString("NATS_TWEET_SUBJECT")
 	}
-	if cfg.Kafka.GroupID == "" {
-		cfg.Kafka.GroupID = viper.GetString("KAFKA_GROUP_ID")
+	if cfg.NATS.QueueGroup == "" {
+		cfg.NATS.QueueGroup = viper.GetString("NATS_QUEUE_GROUP")
 	}
 
 	return &cfg, nil

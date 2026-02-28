@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/yourusername/twitter-services-app/shared/adapters/postgres"
-	"github.com/yourusername/twitter-services-app/shared/kafka"
+	"github.com/yourusername/twitter-services-app/shared/nats"
 )
 
 type OutboxWorker struct {
 	repo     *postgres.OutboxRepository
-	producer kafka.Producer
+	producer nats.Producer
 }
 func (w *OutboxWorker) Run(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Second)
@@ -35,7 +35,7 @@ func (w *OutboxWorker) process(ctx context.Context) {
 		var payload map[string]any
 		_ = json.Unmarshal(e.Payload, &payload)
 
-		event := kafka.Event{
+		event := nats.Event{
 			EventID:       e.ID,
 			EventType:     e.EventType,
 			AggregateID:   e.AggregateID,

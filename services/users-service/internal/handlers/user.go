@@ -80,7 +80,7 @@ func (h *UserHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
 // 	}
 
 // 	// 2️⃣ Create event AFTER success
-// 	event := kafka.Event{
+// 	event := nats.Event{
 // 		EventID:       uuid.New().String(),
 // 		EventType:     "UserFollowed",
 // 		AggregateID:   followerID,
