@@ -29,5 +29,13 @@ func NewRouter(h *Handler) http.Handler {
 		})
 	})
 
+	mux.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			h.SearchTweets(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	})
+
 	return mux
 }

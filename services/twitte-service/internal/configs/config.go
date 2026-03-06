@@ -14,9 +14,10 @@ type NATSConfig struct {
 }
 
 type Config struct {
-	Port    int           `mapstructure:"PORT"`
-	MongoDB MongoDBConfig `mapstructure:",squash"`
-	NATS    NATSConfig    `mapstructure:",squash"`
+	Port          int           `mapstructure:"PORT"`
+	ElasticSearch string        `mapstructure:"ELASTICSEARCH_URL"`
+	MongoDB       MongoDBConfig `mapstructure:",squash"`
+	NATS          NATSConfig    `mapstructure:",squash"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -27,6 +28,7 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("PORT")
 	viper.BindEnv("NATS_URL")
 	viper.BindEnv("NATS_TWEET_SUBJECT")
+	viper.BindEnv("ELASTICSEARCH_URL")
 
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
@@ -53,6 +55,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.NATS.Subject == "" {
 		cfg.NATS.Subject = viper.GetString("NATS_TWEET_SUBJECT")
+	}
+	if cfg.ElasticSearch == "" {
+		cfg.ElasticSearch = viper.GetString("ELASTICSEARCH_URL")
 	}
 
 	return &cfg, nil

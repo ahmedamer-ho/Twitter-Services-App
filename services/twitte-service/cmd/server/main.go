@@ -15,6 +15,7 @@ import (
 	config "github.com/yourusername/twitter-services-app/services/twitte-service/internal/configs"
 	"github.com/yourusername/twitter-services-app/shared/nats"
 	"github.com/yourusername/twitter-services-app/shared/observability"
+	"github.com/elastic/go-elasticsearch/v8"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -67,6 +68,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Elasticsearch
+	esCfg := elasticsearch.Config{
+		Addresses: []string{cfg.ElasticSearch},
+	}
+	esClient, err := elasticsearch.NewClient(esCfg)
+	if err != nil {
+		log.Printf("Failed to create Elasticsearch client: %v", err)
+		esClient = nil // Allow service to run without search
+	}
+
 	// NATS
 	if cfg.NATS.URL == "" {
 		cfg.NATS.URL = "nats://nats:4222"
@@ -88,7 +99,7 @@ func main() {
 	repo := mongoadapter.NewRepository(client.Database("Tweets"))
 
 	// Application Services
-	tweetService := application.NewTweetService(repo)
+	tweetService := application.NewTweetService(repo, esClient)
 
 	// Outbox Worker
 	adapter := &natsPublisherAdapter{producer: producer, subject: cfg.NATS.Subject}
