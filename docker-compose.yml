@@ -7,7 +7,7 @@ networks:
 services:
   nats:
     image: nats:alpine
-    command: ["-js"]
+    command: [ "-js" ]
     ports:
       - "4222:4222"
       - "8222:8222"
@@ -40,6 +40,28 @@ services:
     command: start-dev
     ports:
       - "8085:8080"
+    networks:
+      - twitter-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.1
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - twitter-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.1
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
     networks:
       - twitter-network
 
@@ -87,11 +109,13 @@ services:
       - NATS_URL=nats://nats:4222
       - NATS_TWEET_SUBJECT=tweets
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
     ports:
       - "8082:8082"
     depends_on:
       - mongodb
       - nats
+      - elasticsearch
     networks:
       - twitter-network
 
@@ -159,5 +183,21 @@ services:
       - "80:80"
     depends_on:
       - api-gateway
+    networks:
+      - twitter-network
+
+  search-indexer:
+    build:
+      context: .
+      dockerfile: services/search-indexer/Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+      - NATS_TWEET_SUBJECT=tweets
+      - NATS_QUEUE_GROUP=search-indexer-group
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+    depends_on:
+      - nats
+      - elasticsearch
     networks:
       - twitter-network
