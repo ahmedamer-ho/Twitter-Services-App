@@ -2,8 +2,10 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/yourusername/twitter-services-app/services/timeline-service/internal/domain"
+	"github.com/yourusername/twitter-services-app/shared/nats"
 )
 
 type TimelineRepository interface {
@@ -34,4 +36,19 @@ func (s *TimelineService) AddTweetToTimeline(ctx context.Context, tweet domain.T
 
 func (s *TimelineService) GetTimeline(ctx context.Context, userID string) (*domain.Timeline, error) {
 	return s.repo.GetTimeline(ctx, userID)
+}
+
+func (s *TimelineService) HandleTweetEvent(ctx context.Context, event nats.Event) error {
+	var tweet domain.TimelineTweet
+
+	bytes, err := json.Marshal(event.Payload)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(bytes, &tweet); err != nil {
+		return err
+	}
+
+	return s.AddTweetToTimeline(ctx, tweet)
 }

@@ -3,7 +3,6 @@ package nats
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -41,12 +40,12 @@ func NewConsumer(js jetstream.JetStream, subject, queueGroup string, handler Han
 func (c *Consumer) Start(ctx context.Context) {
 	// Creating a generic stream for the subject if it doesn't exist
 	streamName := "stream_" + c.subject // Simple naming convention
-	
+
 	streamConfig := jetstream.StreamConfig{
 		Name:     streamName,
 		Subjects: []string{c.subject},
 	}
-	
+
 	_, err := c.js.CreateStream(ctx, streamConfig)
 	if err != nil {
 		// Log and continue, stream might already exist

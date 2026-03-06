@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/yourusername/twitter-services-app/shared/observability"
 	"go.opentelemetry.io/otel"
@@ -46,7 +48,7 @@ func (p *natsProducer) Publish(ctx context.Context, subject string, event Event)
 		data:    value,
 		headers: make(map[string][]string),
 	}
-	
+
 	msg.headers[HeaderCorrelationID] = []string{event.CorrelationID}
 	msg.headers[EventTypeHeader] = []string{event.EventType}
 
@@ -54,12 +56,13 @@ func (p *natsProducer) Publish(ctx context.Context, subject string, event Event)
 	observability.InjectNATSHeaders(ctx, msg.headers)
 
 	// Publish to Jetstream
-	// Note: You can use jetstream.Msg here, but we'll use js.PublishAsync or js.PublishMsgAsync
-	// We'll just construct a regular nats.Msg first as JetStream publisher accepts it
-	// We need to import nats core lib for headers, but since we are wrapping, we can use JetStream abstractions
-	
-	// Because of nats.go v2.2+, jetstream.JetStream interface has PublishMsgSync and PublishMsgAsync
-	_, err = p.js.PublishAsync(ctx, subject, value, jetstream.WithMsgID(event.AggregateID)) // MsgID helps with deduplication at server-side
+	nMsg := &nats.Msg{
+		Subject: subject,
+		Data:    value,
+		Header:  nats.Header(msg.headers),
+	}
+
+	_, err = p.js.PublishMsg(ctx, nMsg, jetstream.WithMsgID(event.AggregateID))
 
 	return err
 }

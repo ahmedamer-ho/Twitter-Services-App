@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"os/signal"
@@ -9,15 +10,29 @@ import (
 	"time"
 
 	httpadapter "github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/http"
-	"github.com/yourusername/twitter-services-app/shared/nats"
 	mongoadapter "github.com/yourusername/twitter-services-app/services/twitte-service/internal/adapters/mongodb"
 	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/application"
 	config "github.com/yourusername/twitter-services-app/services/twitte-service/internal/configs"
+	"github.com/yourusername/twitter-services-app/shared/nats"
 	"github.com/yourusername/twitter-services-app/shared/observability"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
+
+type natsPublisherAdapter struct {
+	producer nats.Producer
+	subject  string
+}
+
+func (a *natsPublisherAdapter) Publish(ctx context.Context, key string, value []byte) error {
+	natsEv := nats.Event{
+		EventID:     key,
+		AggregateID: key,
+		Payload:     json.RawMessage(value),
+	}
+	return a.producer.Publish(ctx, a.subject, natsEv)
+}
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -59,7 +74,7 @@ func main() {
 	if cfg.NATS.Subject == "" {
 		cfg.NATS.Subject = "tweets"
 	}
-	
+
 	// Create NATS connection & JetStream Context
 	nc, js, err := nats.InitNATS(cfg.NATS.URL)
 	if err != nil {
@@ -76,7 +91,8 @@ func main() {
 	tweetService := application.NewTweetService(repo)
 
 	// Outbox Worker
-	outboxWorker := application.NewOutboxWorker(repo, producer, 5*time.Second)
+	adapter := &natsPublisherAdapter{producer: producer, subject: cfg.NATS.Subject}
+	outboxWorker := application.NewOutboxWorker(repo, adapter, 5*time.Second)
 	go outboxWorker.Start(ctx)
 
 	// HTTP Handler
