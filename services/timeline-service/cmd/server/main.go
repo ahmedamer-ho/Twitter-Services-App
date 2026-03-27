@@ -31,6 +31,11 @@ func main() {
 	}
 	defer shutdown(ctx)
 
+	// Initialize Structured JSON Logger
+	if err := observability.InitLogger(); err != nil {
+		log.Fatal(err)
+	}
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatal("Cannot load config:", err)

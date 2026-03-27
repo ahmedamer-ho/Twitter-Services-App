@@ -32,6 +32,10 @@ func main() {
 	}
 	defer shutdown(ctx)
 
+	if err := observability.InitLogger(); err != nil {
+		log.Fatal(err)
+	}
+
 	//1. Initialize Keycloak client with config
 	keycloakClient := auth.NewKeycloakClient(
 		cfg.Keycloak.URL,

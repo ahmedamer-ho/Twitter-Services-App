@@ -1,23 +1,16 @@
 global:
-  scrape_interval: 5s # Scrape frequently for demo purposes (usually 15s-1m in prod)
+  scrape_interval: 10s
+  evaluation_interval: 10s
 
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'twitte-service'
+  - job_name: 'otel-collector'
     static_configs:
-      - targets: ['twitte-service:2112']
+      - targets: ['otel-collector:8889']
 
-  - job_name: 'api-gateway'
+  - job_name: 'services'
     static_configs:
-      - targets: ['api-gateway:2112']
-
-  - job_name: 'users-service'
-    static_configs:
-      - targets: ['users-service:2112']
-
-  - job_name: 'timeline-service'
-    static_configs:
-      - targets: ['timeline-service:2112']
+      - targets: ['api-gateway:8090', 'users-service:8081', 'twitte-service:8082', 'timeline-service:8083']

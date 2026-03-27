@@ -66,15 +66,47 @@ services:
       - twitter-network
 
   # Observability
-  jaeger:
-    image: jaegertracing/all-in-one:1.53
-    environment:
-      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
-      - COLLECTOR_OTLP_ENABLED=true
+  loki:
+    image: grafana/loki:2.9.0
     ports:
-      - "16686:16686"
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./infrastructure/observability/loki.yaml:/etc/loki/local-config.yaml
+    networks:
+      - twitter-network
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./infrastructure/observability/promtail.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - twitter-network
+
+  tempo:
+    image: grafana/tempo:2.2.0
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./infrastructure/observability/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
       - "4317:4317"
+    networks:
+      - twitter-network
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.87.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./infrastructure/observability/otel-collector.yaml:/etc/otel-collector-config.yaml
+    ports:
       - "4318:4318"
+      - "8889:8889"
+    depends_on:
+      - tempo
+      - prometheus
     networks:
       - twitter-network
 
@@ -91,10 +123,16 @@ services:
     image: grafana/grafana:latest
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./infrastructure/observability/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yaml
     ports:
       - "3001:3000"
     depends_on:
       - prometheus
+      - loki
+      - tempo
     networks:
       - twitter-network
 
@@ -108,7 +146,7 @@ services:
       - PORT=8082
       - NATS_URL=nats://nats:4222
       - NATS_TWEET_SUBJECT=tweets
-      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
       - ELASTICSEARCH_URL=http://elasticsearch:9200
     ports:
       - "8082:8082"
@@ -131,7 +169,7 @@ services:
       - KEYCLOAK_CLIENT_SECRET=mysecret
       - KEYCLOAK_ADMIN_USERNAME=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
-      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     ports:
       - "8081:8081"
     depends_on:
@@ -167,7 +205,7 @@ services:
       - NATS_URL=nats://nats:4222
       - NATS_TWEET_SUBJECT=tweets
       - NATS_QUEUE_GROUP=timeline-group
-      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     ports:
       - "8083:8083"
     depends_on:
@@ -195,7 +233,7 @@ services:
       - NATS_TWEET_SUBJECT=tweets
       - NATS_QUEUE_GROUP=search-indexer-group
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     depends_on:
       - nats
       - elasticsearch

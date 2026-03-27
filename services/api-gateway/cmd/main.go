@@ -21,6 +21,11 @@ func main() {
 	}
 	defer shutdown(ctx)
 
+	// Initialize Structured JSON Logger
+	if err := observability.InitLogger(); err != nil {
+		log.Fatal(err)
+	}
+
 	usersUrl := os.Getenv("USERS_SERVICE_URL")
 	if usersUrl == "" {
 		usersUrl = "http://localhost:8081"
