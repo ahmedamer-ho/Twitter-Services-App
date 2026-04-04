@@ -41,7 +41,7 @@ func (s *TimelineService) GetTimeline(ctx context.Context, userID string) (*doma
 func (s *TimelineService) HandleTweetEvent(ctx context.Context, event nats.Event) error {
 	var tweet domain.TimelineTweet
 
-	bytes, err := json.Marshal(event.Payload)
+	bytes, err := json.Marshal(event.Data)
 	if err != nil {
 		return err
 	}

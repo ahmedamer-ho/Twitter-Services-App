@@ -3,11 +3,12 @@ package nats
 import "time"
 
 type Event struct {
-	EventID       string      `json:"eventId"`
-	EventType     string      `json:"eventType"`
-	AggregateID   string      `json:"aggregateId"`
+	ID            string      `json:"id"`
+	Type          string      `json:"type"`
+	Source        string      `json:"source"`
 	Timestamp     time.Time   `json:"timestamp"`
-	CorrelationID string      `json:"correlationId"`
-	Payload       interface{} `json:"payload"`
-	RetryCount    int         `json:"retryCount"`
+	Data          interface{} `json:"data"`
+	CorrelationID string      `json:"correlationId,omitempty"`
+	AggregateID   string      `json:"aggregateId,omitempty"`
+	RetryCount    int         `json:"retryCount,omitempty"`
 }

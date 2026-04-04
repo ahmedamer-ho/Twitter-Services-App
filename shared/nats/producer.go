@@ -50,7 +50,7 @@ func (p *natsProducer) Publish(ctx context.Context, subject string, event Event)
 	}
 
 	msg.headers[HeaderCorrelationID] = []string{event.CorrelationID}
-	msg.headers[EventTypeHeader] = []string{event.EventType}
+	msg.headers[EventTypeHeader] = []string{event.Type}
 
 	// Propagate Trace Context using OpenTelemetry observability wrapper
 	observability.InjectNATSHeaders(ctx, msg.headers)

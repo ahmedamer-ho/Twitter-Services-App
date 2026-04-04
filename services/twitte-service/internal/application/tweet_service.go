@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/twitter-services-app/services/twitte-service/internal/domain"
+	"github.com/yourusername/twitter-services-app/shared/events"
 )
 
 type TweetService struct {
@@ -43,7 +44,14 @@ func (s *TweetService) CreateTweet(
 		IdempotencyKey: idempotencyKey,
 	}
 
-	eventPayload, _ := json.Marshal(tweet)
+	tweetCreatedEvent := events.TweetCreated{
+		TweetID:   tweet.ID,
+		AuthorID:  tweet.AuthorID,
+		Content:   tweet.Content,
+		CreatedAt: tweet.CreatedAt,
+	}
+
+	eventPayload, _ := json.Marshal(tweetCreatedEvent)
 
 	event := domain.OutboxEvent{
 		ID:            uuid.NewString(),

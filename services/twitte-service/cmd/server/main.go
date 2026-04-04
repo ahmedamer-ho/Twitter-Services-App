@@ -28,9 +28,9 @@ type natsPublisherAdapter struct {
 
 func (a *natsPublisherAdapter) Publish(ctx context.Context, key string, value []byte) error {
 	natsEv := nats.Event{
-		EventID:     key,
+		ID:          key,
 		AggregateID: key,
-		Payload:     json.RawMessage(value),
+		Data:        json.RawMessage(value),
 	}
 	return a.producer.Publish(ctx, a.subject, natsEv)
 }

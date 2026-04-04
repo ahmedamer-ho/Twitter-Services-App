@@ -22,28 +22,28 @@ func NewIndexTweetHandler(es *infrastructure.ESClient) *IndexTweetHandler {
 }
 
 func (h *IndexTweetHandler) HandleTweetEvent(ctx context.Context, event nats.Event) error {
-	log.Printf("Received Event: %s (AggregateID: %s)", event.EventType, event.AggregateID)
+	log.Printf("Received Event: %s (AggregateID: %s)", event.Type, event.AggregateID)
 
-	switch event.EventType {
+	switch event.Type {
 	case "TweetCreated", "TweetUpdated":
 		return h.handleIndexTweet(ctx, event)
 	case "TweetDeleted":
 		return h.handleDeleteTweet(ctx, event.AggregateID)
 	default:
-		log.Printf("Ignored unsupported event type: %s", event.EventType)
+		log.Printf("Ignored unsupported event type: %s", event.Type)
 		return nil
 	}
 }
 
 func (h *IndexTweetHandler) handleIndexTweet(ctx context.Context, event nats.Event) error {
 	var payload struct {
-		ID        string `json:"id"`
+		ID        string `json:"tweetId"`
 		AuthorID  string `json:"authorId"`
 		Content   string `json:"content"`
 		CreatedAt string `json:"createdAt"`
 	}
 
-	bytes, ok := event.Payload.([]byte)
+	bytes, ok := event.Data.([]byte)
 	if !ok {
 		return fmt.Errorf("invalid payload type")
 	}

@@ -36,12 +36,13 @@ func (w *OutboxWorker) process(ctx context.Context) {
 		_ = json.Unmarshal(e.Payload, &payload)
 
 		event := nats.Event{
-			EventID:       e.ID,
-			EventType:     e.EventType,
+			ID:            e.ID,
+			Type:          e.EventType,
+			Source:        "outbox",
 			AggregateID:   e.AggregateID,
 			Timestamp:     e.CreatedAt,
 			CorrelationID: e.CorrelationID,
-			Payload:       payload,
+			Data:          payload,
 		}
 
 		if err := w.producer.Publish(ctx, "user-events", event); err != nil {
