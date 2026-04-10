@@ -1,0 +1,42 @@
+# NATS Helm Values Configuration
+# Deployment: 3-Node NATS Cluster with JetStream enabled
+
+config:
+  cluster:
+    name: nats-cluster
+    replicas: 3
+
+  jetstream:
+    enabled: true
+    
+    # Store data up to limits. When reached, old messages are discarded (old) or new messages are rejected (new).
+    # Since we want to ensure no message loss under high load, 'old' is safer to keep system running, 
+    # but 'new' ensures we don't accidentally drop anything silently if consumers are too slow.
+    # Default is discard: old
+    
+    memStorage:
+      enabled: true
+      size: 1Gi
+    
+    fileStorage:
+      enabled: true
+      size: 10Gi
+      storageDirectory: /data/jetstream
+
+# Persistent Volume mapping for the JetStream fileStorage
+pvc:
+  enabled: true
+  size: 10Gi
+  # storageClassName: standard # Uncomment and adapt based on your cloud provider/k8s flavor
+
+# Affinity rules to ensure NATS pods are spread across different nodes for High Availability
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - nats
+        topologyKey: "kubernetes.io/hostname"
